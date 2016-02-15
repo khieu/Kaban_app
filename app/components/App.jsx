@@ -1,4 +1,4 @@
-//import uuid from 'node-uuid';
+import AltContainer from 'alt-container';
 import React from 'react';
 import Note from './Note';
 import Notes from './Notes';
@@ -38,42 +38,30 @@ var App = React.createClass({
 export default App;*/
 export default class App extends React.Component {
 
-	constructor(props) {
-		super(props);
-
-		this.state = NoteStore.getState();
-		console.log(this.state);
-	}
-
-	ComponentDidMount() {
-		NoteStore.listen(this.storeChanged);
-	}
-
-	ComponentWillUnmount() {
-		NoteStore.unlisten(this.storeChanged);
-	}
-
-	storeChanged = (state) => {
-		this.setState(state);
-	};
-
 	render() {
-		const notes = this.state.notes;
 
 		return (
 			<div>
 				<button className='add-note' onClick={this.addNote}>+</button>
-				<Notes 
-					notes={notes} 
-					onEdit={this.editNote}
-					onDelete={this.deleteNote}
-				/>
+				
+				<AltContainer
+					stores={[NoteStore]}
+					inject={{
+						// inject notes into the child (<Notes>)
+						notes: () => NoteStore.getState().notes // OR function() {return NoteStore.getState().notes;}
+						
+					}}
+				>
+					<Notes 
+						onEdit={this.editNote}
+						onDelete={this.deleteNote}
+					/>
+				</AltContainer>
 			</div>
 		);
 	}
 
 	addNote = () => {
-		console.log('addNote called');
 		NoteActions.create({task: 'New task'});
 	};
 

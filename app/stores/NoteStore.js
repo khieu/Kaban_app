@@ -24,7 +24,6 @@ class NoteStore {
 		const notes = this.notes;
 
 		note.id = uuid.v4();
-		console.log(note);
 
 		this.setState({
 			notes: notes.concat(note)
