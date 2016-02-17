@@ -6,31 +6,26 @@ class NoteStore {
 	constructor() {
 		this.bindActions(NoteActions);
 
-		this.notes = [{
-				id: uuid.v4(),
-				task: 'Learn Webpack'
-			},
-			{
-				id: uuid.v4(),
-				task: 'Learn React'
-			},
-			{
-				id: uuid.v4(),
-				task: 'Do laundry'
-			}];
+		this.notes = [];
+
+		this.exportPublicMethods({
+			getNotesByIds: this.getNotesByIds.bind(this)
+		});
 	}
 
 	create(note) {
 		const notes = this.notes;
-
+		console.log('create a new note');
 		note.id = uuid.v4();
 
 		this.setState({
 			notes: notes.concat(note)
 		});
+		return note;
 	}
 
 	update(updatedNote) {
+		console.log('update a note');
 		const notes = this.notes.map(
 			note => {
 				if (note.id === updatedNote.id) {
@@ -51,6 +46,12 @@ class NoteStore {
 		this.setState({
 			notes: this.notes.filter(note => note.id !== id)
 		});
+	}
+
+	getNotesByIds(ids) {
+		return (ids || []).map(
+			id => this.notes.filter(note => note.id === id)
+		).filter(a => a.length).map(a => a[0]);
 	}
 }
 
