@@ -6,13 +6,20 @@ const webpack = require('webpack');
 
 const NpmInstallPlugin = require('npm-install-webpack-plugin');
 
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+
+const CleanPlugin = require('clean-webpack-plugin');
+
+const ExtractTextPlugin = require('extract-text-webpack-plugin');
+
 //Load *package.json* so we can use `dependencies` from there
 const pkg = require('./package.json');
 
 const TARGET = process.env.npm_lifecycle_event;
 const PATHS = {
   app: path.join(__dirname, 'app'),
-  build: path.join(__dirname, 'build')
+  build: path.join(__dirname, 'build'),
+  style: path.join(__dirname, 'app/main.css')
 };
 
 process.env.BABEL_ENV = TARGET;
@@ -21,7 +28,10 @@ const common = {
 
   // Entry accepts a path or an object of entries.
   // The build chapter contains an example of the latter.
-  entry: PATHS.app,
+  entry: {
+    app: PATHS.app,
+    style: PATHS.style
+  },
   // Add resolve.extensions.
   // '' is needed to allow imports without an extension.
   // Note the .'s before extensions as it will fail to match without!!!
@@ -35,14 +45,6 @@ const common = {
   },
   module: {
      loaders: [
-       {
-         // Test expects a RegExp! Note the slashes!
-         test: /\.css$/,
-         loaders: ['style', 'css'],
-         // Include accepts either a path or an array of paths.
-         include: PATHS.app
-       },
-
        // Set up jsx. This accepts js too thanks to RegExp
       {
         test: /\.jsx?$/,
@@ -55,7 +57,15 @@ const common = {
         include: PATHS.app
       }
      ]
-   }
+    },
+    plugins: [ 
+      new HtmlWebpackPlugin({
+        template: 'node_modules/html-webpack-template/index.ejs',
+        title: 'Kaban app',
+        appMountId: 'app',
+        inject: false
+      })
+    ] 
 };
 
 
@@ -64,7 +74,6 @@ if(TARGET === 'start' || !TARGET) {
   module.exports = merge(common, {
   	devtool: 'eval-source-map',
     devServer: {
-      contentBase: PATHS.build,
 
       // Enable history API fallback so HTML5 History API based
       // routing works. This is a good default that will come
@@ -87,6 +96,16 @@ if(TARGET === 'start' || !TARGET) {
       host: process.env.HOST,
       port: process.env.PORT
     },
+    module: {
+      loaders: [
+        // Define development specific CSS setup
+        { 
+          test: /\.css$/,
+          loaders: ['style', 'css'],
+          include: PATHS.app
+        }
+      ]
+    },
     plugins: [
        new webpack.HotModuleReplacementPlugin(),
        new NpmInstallPlugin({
@@ -96,7 +115,7 @@ if(TARGET === 'start' || !TARGET) {
   });
 }
 
-if(TARGET === 'build') {
+if(TARGET === 'build' || TARGET === 'stats') {
   module.exports = merge(common, {
     // Define vendor entry point needed for splitting
     entry: {
@@ -107,7 +126,30 @@ if(TARGET === 'build') {
         return v !== 'alt-utils';
       })
     },
+    output: {
+      path: PATHS.build,
+      filename: '[name].[chunkhash].js',
+      chunkFilename: '[chunkhash].js'
+    },
+    module: {
+      loaders: [
+        // Extract CSS during build
+        {
+          test: /\.css$/,
+          loader: ExtractTextPlugin.extract('style', 'css'),
+          include: PATHS.app
+        }
+      ]
+    },
     plugins: [
+      new CleanPlugin([PATHS.build],{
+        verbose: false // Don't write logs to console
+      }),
+      new ExtractTextPlugin('[name].[chunkhash].css'),
+      // Extract vendor and manifest files
+      new webpack.optimize.CommonsChunkPlugin({
+        names: ['vendor', 'manifest']
+      }),
       new webpack.DefinePlugin({
         'process.env.NODE_ENV': '"production"'
       }),
