@@ -2,12 +2,14 @@ const path = require('path');
 
 const merge = require('webpack-merge');
 
-const TARGET = process.env.npm_lifecycle_event;
+const webpack = require('webpack');
 
 const NpmInstallPlugin = require('npm-install-webpack-plugin');
 
-const webpack = require('webpack');
+//Load *package.json* so we can use `dependencies` from there
+const pkg = require('./package.json');
 
+const TARGET = process.env.npm_lifecycle_event;
 const PATHS = {
   app: path.join(__dirname, 'app'),
   build: path.join(__dirname, 'build')
@@ -28,7 +30,8 @@ const common = {
   },
   output: {
     path: PATHS.build,
-    filename: 'bundle.js'
+    // Output using entry name
+    filename: '[name].js'
   },
   module: {
      loaders: [
@@ -94,5 +97,25 @@ if(TARGET === 'start' || !TARGET) {
 }
 
 if(TARGET === 'build') {
-  module.exports = merge(common, {});
+  module.exports = merge(common, {
+    // Define vendor entry point needed for splitting
+    entry: {
+      vendor: Object.keys(pkg.dependencies).filter(function(v) {
+        // Exclude alt-utils as it won't work with this setup
+        // due to the way the package has been designed
+        // (no package.json main).
+        return v !== 'alt-utils';
+      })
+    },
+    plugins: [
+      new webpack.DefinePlugin({
+        'process.env.NODE_ENV': '"production"'
+      }),
+      new webpack.optimize.UglifyJsPlugin({
+        compress: {
+          warnings: false
+        }
+      })
+    ]
+  });
 }
